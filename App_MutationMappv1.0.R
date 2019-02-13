@@ -140,7 +140,8 @@ coord_pointB <- function (x0, y0, angle, dist)
 ##################################################################################################
 
 
-# #########  Function to determine angle of the arrow according to mutation type #####################
+# #########  Function to determine angle of the arrow according to mutation type on a complete circle #####################
+
 # type_de_mut <- function(type)
 # {
 #   if(type == 0 | type == 11)
@@ -184,8 +185,6 @@ coord_pointB <- function (x0, y0, angle, dist)
 #   
 #   return (angle_mut)
 # }
-
-
 
 
 
@@ -238,13 +237,7 @@ type_de_mut <- function(type)
 
 
 
-
-
-
-
-
-
-############ Function to add color to mutation type ##################################################
+############ Function to add label to mutation type ##################################################
 color_mut <- function(type)
 {
   if(type == 0)
@@ -309,9 +302,8 @@ color_mut <- function(type)
   return (lab)
 }
 
-## fonctions pour attribuer une couleur a un nucléotide
+## fonctions pour attribuer une couleur a un type de mutation exemple mut == O correspond à la mutation de A vers C
 ## http://www.sthda.com/french/wiki/couleurs-dans-r#les-noms-de-couleurs-reconnus-par-r
-
 
 couleurParMut <- function(mutmut)
 {
@@ -369,8 +361,8 @@ couleurParMut <- function(mutmut)
   }
   return(col)
 }
-
-
+## Cette fonctions a le meme role que la precedente a la difference pres que la couleur est differente selon que se soit une transition ou une transversion
+## http://www.sthda.com/french/wiki/couleurs-dans-r#les-noms-de-couleurs-reconnus-par-r
 couleurGC <- function(mutmut)
 {
   if (mutmut == 0  )
@@ -427,8 +419,8 @@ couleurGC <- function(mutmut)
   }
   return(col)
 }
-
-
+## Ici, la couleur est donnee au type de mutation G vers C et C vers G 
+## http://www.sthda.com/french/wiki/couleurs-dans-r#les-noms-de-couleurs-reconnus-par-r
 couleurTransVs <- function(mutmut)
 {
   if (mutmut == 0  )
@@ -487,7 +479,7 @@ couleurTransVs <- function(mutmut)
 }
 
 
-
+# Fonction utilisee dans le plot de l'arbre pour colorier la racine de l'arbre
 couleurRacine <- function(mutmut)
 {
   if (mutmut == 0 || mutmut == 1 || mutmut == 2 )
@@ -517,7 +509,7 @@ couleurRacine <- function(mutmut)
   return(col)
 }
 
-
+# fonction permettat de colorier les descendant dans l'arbre apres une mutation
 couleurDescendant <- function(mutmut)
 {
   if (mutmut == 3 || mutmut == 8 || mutmut == 11 )
@@ -714,12 +706,12 @@ ui<- navbarPage("MutMapp",
       theme = shinytheme("slate"),
 
 
-  tabPanel("Welcome", h3(" Welcome in the Mutation Map vizualisation application"),
-                      h4 (" Utilities "),
+  tabPanel("Welcome", h2(" Welcome in the Mutation Map vizualisation application"),
+                      h3 (" Utilities "),
                       h5(" This application permit to draw mutation map(s) for different sites along your DNA alignment.
-                                       Your file(s) should be issue from phytime and should be a tab separator table.
-                         yours fasta files should be fasta with .fasta extension. Tree files could be in Nexus or Neewick format"),
-                      h4 ("Description"),
+                                       Your Mutation Map file(s) should be issue from phytime and should be a tab separator table.
+                         yours fasta files should be fasta with .fasta extension. Tree files should be in Nexus format"),
+                      h3 ("Description"),
                       h5("One the first page you could download your different files."), 
                       h5( "The alignment plot could be draw on this page and you will be able to navigate along your sequences with the different buttons"),
                       h5("The second page named Diagramm allows to plot the mutation mapps according to there time from the present and there type."),
@@ -737,7 +729,11 @@ ui<- navbarPage("MutMapp",
                       h5(" This one is possible only if you have dowload alignment and mutation mapp files"),
                       h5(" You will be able to plot the differents iterations one by one "),
                       h4("More Information"),
-                      h5(" If you need more informations you could contact me : suez@lirmm.fr")
+                      h5(" If you need more informations you could contact me : suez@lirmm.fr"), 
+                      h3(" Acknowledgement"),
+                      h5(" Thank you to M. Mariadassou for the construction of the alignement plot and for help in general on other functions "),
+                      h5 ("Thanks a lot to A. Behdenna for the constant advice and help in general")
+           
   ),
 
 
@@ -777,6 +773,10 @@ ui<- navbarPage("MutMapp",
            fluidRow( "On this page you can plot diagramme of mutation map",
             sidebarLayout(position = "left",
              sidebarPanel( 
+                          radioButtons("Data_option", label = h4("Data Option"),
+                                       c("Complete_data", "choose_individuals")),
+                          conditionalPanel("input.Data_option === 'choose_individuals'",
+                                           uiOutput("clade")),
 
                           radioButtons("Plot_option", label = h4("Graphical Option"),
                                    c("General_view", "One_site"), inline = TRUE),
@@ -977,12 +977,12 @@ server <- function(input, output){
       Mutation_map <- carte_de_mut_tot
     }
   })
-
   
   ## Pour recuperer un fichier de donnees sans les lignes -1  
   dataset <- reactive({
     subset(Mutation_map(), muttype != -1)
   })
+  
   
   
   ## Pour fabriquer un fichier histogram avec le nombre de mutation et le nombre de fois ou ce nombre de mutations est calcule
@@ -1047,30 +1047,6 @@ server <- function(input, output){
     }
   })
   
-
-   
-  # Construction du tableau resume afficher en dessous 
-  # ResumeTable <- reactive({
-  #   filenumber <- length(unique(Mutation_map()$filename))
-  #   dataType <- input$data_type
-  #   
-  #   treeNameFile = input$fileTree$name
-  #   alignNameFile = input$Align$name
-  #   number_it <- max(unique(Mutation_map()$num_carte))
-  #   numbertree <- length(dataTree())
-  #   species_number <-  length(unique(dataSeq()$Name))
-  #   ResumeTable <- matrix(NA, ncol = 4, nrow = 3)
-  #   ResumeTable[1,] <- c("Rosetta files",paste("You uploaded: ",filenumber, "file(s)"), dataType, paste("iterations: ", number_it))
-  #   ResumeTable[2,] <- c("Nexus files",paste("you uploaded: ",treeNameFile), "nexus", paste("tree: ",numbertree))
-  #   ResumeTable[3,] <- c("Fasta alignement",paste("you uploaded: ",alignNameFile), "fasta", paste("species: ", species_number))
-  #   colnames(ResumeTable) <- c("Type of file","Files","Type of data", "Number of")
-  #   ResumeTable = as.data.frame(ResumeTable)
-  # })
-
-  # affiche un tableau resumant les fichiers telechargees     
-  # output$HeadDataTable <- renderTable({
-  #   ResumeTable()
-  #   })
   
   # Affiche l'alignement de sequences
   output$Alignement <- renderPlot({
@@ -1221,13 +1197,52 @@ server <- function(input, output){
     }
   })
   
-    
   dataTest <- reactive({
     dataT <- subset(dataset(), real_pos %in% input$SiteDeLal)
     dataTest <- subset(dataT, num_carte %in% input$ChoixDeLiteration)
   })
   
+  # pour ne garder que les mutations presentes sur les clades d interets
+  output$clade <- renderUI({
+    
+    if (length(unique(dataset()$Tip_label)) > 0)
+    {
+      choice <-  unique(dataset()$Tip_label)
+      selectizeInput(
+        'ChoixDuClade', "Select specie(s)", choices = choice, selected = choice[1],
+        multiple = TRUE
+      )
+    }
+    else
+    {
+      return(NULL)
+    }
+  })
+  
+  
+  
+  #### Jeu de donnees filtres sur les clades 
+  DataClade <- reactive({
+    DataClade <- subset(dataset(), Tip_label %in% input$ChoixDuClade)
+    print(dataset())
+    print("pkoi es tu vide?")
+    print(DataClade)
+  })
+  
+  DataClade_iterOne <- reactive({
+    DataClade_iterOne <- subset(dataTest(), Tip_label %in% input$ChoixDuClade)
+    print(DataClade_iterOne)
+  })
+  
+  DataClade_allIter <- reactive({
+    DataClade_allIter <- subset(data_plot(), Tip_label %in% input$ChoixDuClade)
+    print(DataClade_allIter)
+  })
+    
+  
     output$MutMap <- renderPlot({
+      if(input$Data_option == "Complete_data")
+      {
       if (input$legend_type == "One color by mutation")
       {    
          if (input$Plot_option == "General_view")
@@ -1407,7 +1422,6 @@ server <- function(input, output){
               theme(legend.position="none")+
               labs(x = "", y = "", title = paste0("Mutation map for the site ", unique(dataTest()$pos)+1))
           }
-
           p
         }
       } else if (input$legend_type == "View GC")
@@ -1473,7 +1487,7 @@ server <- function(input, output){
         }
         
         #### Si les sites sont affiches un a un
-        else if (input$Plot_option =="One_site")
+        else (input$Plot_option =="One_site")
         {
           if (input$Iteration_Print == "All_iterations")
           {
@@ -1503,9 +1517,291 @@ server <- function(input, output){
         }
         
     #   ### S il ny a pas de fichiers
-       } else{
-           return(NULL)
+       } 
+      }else if (input$Data_option == "choose_individuals"){
+      
+        if (input$legend_type == "One color by mutation")
+        {    
+          if (input$Plot_option == "General_view")
+          {
+            ## trace le graph des carte de mutations
+            p<- ggplot(DataClade(), aes(x = x_0, y = y_0)) +
+              geom_segment(aes(xend = x_1, yend = y_1),
+                           arrow = arrow(angle = 30,length=unit(0.10, "inches"), ends = "first"),
+                           size = 1.2, alpha = 0.25, color = DataClade()$color_lab) + ## on a rajoute alpha ici = parametre de transparence (0 transparent 1 opaque)
+              theme_bw()+
+              theme(legend.position="none")+
+              labs(x = "", y = "")
+            
+            
+            ## pour tracer les histogrammes
+            s <- ggplot(data_histo(), aes(x=count))+
+              geom_histogram(color = "black", fill = "white")
+            
+            ## selon les conditions d'echelle choisi par l'utilisateur
+            ##
+            if (input$scale_option == "free_scale")
+            {
+              p <- p + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'free', page = input$page)# page = curr_page())+
+              s <- s + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'free', page = input$page)
+            }
+            else if (input$scale_option == "coord_fixed")
+            {
+              p<- p + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'fixed', page = input$page)# page = curr_page())+
+              s <- s + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), page = input$page)
+            }
+            else if (input$scale_option == "ratio_1/1")
+            {
+              p<- p + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'fixed', page = input$page) # page = curr_page())+
+              p <- p+ xlim(min_l(), max_l())+ 
+                ylim(min_l(), max_l())
+              s <- s + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'free', page = input$page)
+              
+              s_grob = ggplotGrob(s)
+              p + annotation_custom(s_grob)
+            }
+            
+            ## Parametre d affichage des plots
+            if (input$PlotHistogram == TRUE)
+            {
+              ## Si l'option d'affichage des histo des choisie
+              ## Selon le nombre de graph a afficher sur une page
+              if (nrow_count() == 1 & ncol_count() ==1)
+              {
+                # pour mettre l'histogramme en petit en bas de la carte de mutation
+                full(p,s) 
+              }else{
+                # pour afficher les cartes de mut et les histo en dessous
+                grid.arrange(p ,s)  
+              }
+            }else{  
+              ## Si l'option d'affichage des histo n'est pas choisie
+              p
+            }
+          }
+          
+          #### Si les sites sont affiches un a un
+          else if (input$Plot_option =="One_site")
+          {
+            if (input$Iteration_Print == "All_iterations")
+            {
+              p<- ggplot(DataClade_allIter(), aes(x = x_0, y = y_0)) +
+                geom_segment(aes(xend = x_1, yend = y_1),
+                             arrow = arrow(angle = 30,length=unit(0.10, "inches"), ends = "first"),
+                             size = 1.2, alpha = 0.35, color = DataClade_allIter()$color_lab) + ## on a rajoute alpha ici = parametre de transparence (0 transparent 1 opaque)
+                theme_bw()+
+                theme(legend.position="none")+
+                coord_equal(ratio=1)+
+                labs(x = "", y = "", title = paste0("Mutation map for the site ", unique(DataClade_allIter()$pos)+1))
+              p <- p + xlim(mn_l(), mx_l())+
+                ylim(mn_l(), mx_l())
+              p <- p + annotate("point",x =0, y = 0, size = length(unique(DataClade_allIter()$num_carte)), alpha = 0.1, color = "red")
+              s <- ggplot(data_histo_plot(), aes(x = count))+
+                geom_histogram(color = "black", fill = "white")
+            }else{
+              p<- ggplot(DataClade_iterOne(), aes(x = x_0, y = y_0)) +
+                geom_segment(aes(xend = x_1, yend = y_1),
+                             arrow = arrow(angle = 30,length=unit(0.10, "inches"), ends = "first"),
+                             size = 1.2, alpha = 0.25, color = DataClade_iterOne()$color_lab) + ## on a rajoute alpha ici = parametre de transparence (0 transparent 1 opaque)
+                theme_bw()+
+                theme(legend.position="none")+
+                labs(x = "", y = "", title = paste0("Mutation map for the site ", unique(DataClade_iterOne()$pos)+1))
+            }
+            p
+          }
         }
+        else if (input$legend_type == "View Transition vs Transversion")
+        {
+          if (input$Plot_option == "General_view")
+          {
+            ## trace le graph des carte de mutations
+            p<- ggplot(DataClade(), aes(x = x_0, y = y_0)) +
+              geom_segment(aes(xend = x_1, yend = y_1),
+                           arrow = arrow(angle = 30,length=unit(0.10, "inches"), ends = "first"),
+                           size = 1.2, alpha = 0.25, color = DataClade()$col_Transv) + ## on a rajoute alpha ici = parametre de transparence (0 transparent 1 opaque)
+              
+              theme_bw()+
+              theme(legend.position="none")+
+              labs(x = "", y = "")
+            print(subset(DataClade(), real_pos==29))
+            
+            ## pour tracer les histogrammes
+            s <- ggplot(data_histo(), aes(x=count))+
+              geom_histogram(color = "black", fill = "white")
+            
+            ## selon les conditions d'echelle choisi par l'utilisateur
+            ##
+            if (input$scale_option == "free_scale")
+            {
+              p <- p + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'free', drop = FALSE, page = input$page)# page = curr_page())+
+              s <- s + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'free', page = input$page)
+            }
+            else if (input$scale_option == "coord_fixed")
+            {
+              p <- p + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'fixed', page = input$page)# page = curr_page())+
+              s <- s + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), page = input$page)
+            }
+            else if (input$scale_option == "ratio_1/1")
+            {
+              p<- p + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'fixed', page = input$page) # page = curr_page())+
+              p <- p+ xlim(min_l(), max_l())+ 
+                ylim(min_l(), max_l())
+              s <- s + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'free', page = input$page)
+              
+              s_grob = ggplotGrob(s)
+              p + annotation_custom(s_grob)
+            }
+            
+            ## Parametre d affichage des plots
+            if (input$PlotHistogram == TRUE)
+            {
+              ## Si l'option d'affichage des histo des choisie
+              ## Selon le nombre de graph a afficher sur une page
+              if (nrow_count() == 1 & ncol_count() ==1)
+              {
+                # pour mettre l'histogramme en petit en bas de la carte de mutation
+                full(p,s) 
+              }else{
+                # pour afficher les cartes de mut et les histo en dessous
+                grid.arrange(p ,s)  
+              }
+            }else{  
+              ## Si l'option d'affichage des histo n'est pas choisie
+              # print(dataset())
+              p
+            }
+          }
+          
+          #### Si les sites sont affiches un a un
+          else if (input$Plot_option =="One_site")
+          {
+            if (input$Iteration_Print == "All_iterations")
+            {
+              p<- ggplot(DataClade_allIter(), aes(x = x_0, y = y_0)) +
+                geom_segment(aes(xend = x_1, yend = y_1),
+                             arrow = arrow(angle = 30,length=unit(0.10, "inches"), ends = "first"),
+                             size = 1.2, alpha = 0.35, color = DataClade_allIter()$col_Transv) + ## on a rajoute alpha ici = parametre de transparence (0 transparent 1 opaque)
+                theme_bw()+
+                theme(legend.position="none")+
+                coord_equal(ratio=1)+
+                labs(x = "", y = "", title = paste0("Mutation map for the site ", unique(DataClade_allIter()$pos)+1))
+              p <- p + xlim(mn_l(), mx_l())+
+                ylim(mn_l(), mx_l())
+              p <- p + annotate("point",x =0, y = 0, size = length(unique(DataClade_allIter()$num_carte)), alpha = 0.1, color = "red")
+              s <- ggplot(data_histo_plot(), aes(x = count))+
+                geom_histogram(color = "black", fill = "white")
+            }else{
+              p<- ggplot(DataClade_iterOne(), aes(x = x_0, y = y_0)) +
+                geom_segment(aes(xend = x_1, yend = y_1),
+                             arrow = arrow(angle = 30,length=unit(0.10, "inches"), ends = "first"),
+                             size = 1.2, alpha = 0.25, color = DataClade_iterOne()$col_Transv) + ## on a rajoute alpha ici = parametre de transparence (0 transparent 1 opaque)
+                theme_bw()+
+                theme(legend.position="none")+
+                labs(x = "", y = "", title = paste0("Mutation map for the site ", unique(DataClade_iterOne()$pos)+1))
+            }
+            
+            p
+          }
+        } else if (input$legend_type == "View GC")
+        {
+          if (input$Plot_option == "General_view")
+          {
+            ## trace le graph des carte de mutations
+            p<- ggplot(DataClade(), aes(x = x_0, y = y_0)) +
+              geom_segment(aes(xend = x_1, yend = y_1),
+                           arrow = arrow(angle = 30,length=unit(0.10, "inches"), ends = "first"),
+                           size = 1.2, alpha = 0.25, color = DataClade()$col_GC) + ## on a rajoute alpha ici = parametre de transparence (0 transparent 1 opaque)
+              
+              theme_bw()+
+              theme(legend.position="none")+
+              labs(x = "", y = "")
+            print(subset(DataClade(), real_pos==29))
+            
+            ## pour tracer les histogrammes
+            s <- ggplot(data_histo(), aes(x=count))+
+              geom_histogram(color = "black", fill = "white")
+            
+            ## selon les conditions d'echelle choisi par l'utilisateur
+            ##
+            if (input$scale_option == "free_scale")
+            {
+              p <- p + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'free', drop = FALSE, page = input$page)# page = curr_page())+
+              s <- s + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'free', page = input$page)
+            }
+            else if (input$scale_option == "coord_fixed")
+            {
+              p <- p + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'fixed', page = input$page)# page = curr_page())+
+              s <- s + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), page = input$page)
+            }
+            else if (input$scale_option == "ratio_1/1")
+            {
+              p<- p + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'fixed', page = input$page) # page = curr_page())+
+              p <- p+ xlim(min_l(), max_l())+ 
+                ylim(min_l(), max_l())
+              s <- s + facet_wrap_paginate( ~real_pos, nrow = nrow_count(), ncol = ncol_count(), scales = 'free', page = input$page)
+              
+              s_grob = ggplotGrob(s)
+              p + annotation_custom(s_grob)
+            }
+            
+            ## Parametre d affichage des plots
+            if (input$PlotHistogram == TRUE)
+            {
+              ## Si l'option d'affichage des histo des choisie
+              ## Selon le nombre de graph a afficher sur une page
+              if (nrow_count() == 1 & ncol_count() ==1)
+              {
+                # pour mettre l'histogramme en petit en bas de la carte de mutation
+                full(p,s) 
+              }else{
+                # pour afficher les cartes de mut et les histo en dessous
+                grid.arrange(p ,s)  
+              }
+            }else{  
+              ## Si l'option d'affichage des histo n'est pas choisie
+              # print(dataset())
+              p
+            }
+          }
+          
+          #### Si les sites sont affiches un a un
+          else if (input$Plot_option =="One_site")
+          {
+            if (input$Iteration_Print == "All_iterations")
+            {
+              p<- ggplot(DataClade_allIter(), aes(x = x_0, y = y_0)) +
+                geom_segment(aes(xend = x_1, yend = y_1),
+                             arrow = arrow(angle = 30,length=unit(0.10, "inches"), ends = "first"),
+                             size = 1.2, alpha = 0.35, color = DataClade_allIter()$col_GC) + ## on a rajoute alpha ici = parametre de transparence (0 transparent 1 opaque)
+                theme_bw()+
+                theme(legend.position="none")+
+                coord_equal(ratio=1)+
+                labs(x = "", y = "", title = paste0("Mutation map for the site ", unique(DataClade_allIter()$pos)+1))
+              p <- p + xlim(mn_l(), mx_l())+
+                ylim(mn_l(), mx_l())
+              p <- p + annotate("point",x =0, y = 0, size = length(unique(DataClade_allIter()$num_carte)), alpha = 0.1, color = "red")
+              s <- ggplot(data_histo_plot(), aes(x = count))+
+                geom_histogram(color = "black", fill = "white")
+            }else{
+              p<- ggplot(DataClade_iterOne(), aes(x = x_0, y = y_0)) +
+                geom_segment(aes(xend = x_1, yend = y_1),
+                             arrow = arrow(angle = 30,length=unit(0.10, "inches"), ends = "first"),
+                             size = 1.2, alpha = 0.25, color = DataClade_iterOne()$col_GC) + ## on a rajoute alpha ici = parametre de transparence (0 transparent 1 opaque)
+                theme_bw()+
+                theme(legend.position="none")+
+                labs(x = "", y = "", title = paste0("Mutation map for the site ", unique(DataClade_iterOne()$pos)+1))
+            }
+            p
+          }
+          
+          #   ### S il ny a pas de fichiers
+        }
+        
+        
+        
+      }else{
+      return(NULL)
+    }
     })
     
  
@@ -1832,7 +2128,8 @@ server <- function(input, output){
     1/length(Iter())
   })
   
-  #### pLOT DE L'ARBRE
+  #### PLOT DE L'ARBRE
+## Code pour tracer l'arbre
   TreeGraph <- reactive({
      if (is.null(dataTree()))
       {
@@ -1841,32 +2138,27 @@ server <- function(input, output){
         plotTree <- ggplot(TabPresqueFinal(), aes(x = x, y = y, color = TabPresqueFinal()$col)) +
           geom_segment(aes(xend = xEnd, yend = yEnd),
                        size = 0.5, color = TabPresqueFinal()$col, alpha = transparence())+ #color = NewTab$col,
-          
-          annotate(geom = "text", x = tabDataTipLab()$x, 
+           annotate(geom = "text", x = tabDataTipLab()$x, 
                    y = tabDataTipLab()$y, hjust = 0,
                    label = tabDataTipLab()$Name, fontface = 1)+
-          # geom_point(data = CarteDeMut, aes(x= muttime, y=as.numeric(ypos)), alpha = 0.25, color = (factor(CarteDeMut$muttype+1)), 
-          #            shape = 20, size = 2)+
           theme_gray()+
           theme(panel.background = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(),
                 axis.title.y = element_blank(), legend.position = "none")+
           scale_x_continuous("Time (Ma)",  limits = c(NA, 0.25))
       }
  })
+# code pour afficher l alignement du site correspondant 
   AlignGraph <- reactive({
     plot <- ggplot(dataSeq_spe(), aes(x = Position, y = Name, fill = Residue, label = Residue)) + 
       geom_tile() + 
       geom_text() + 
-     # scale_x_continuous(breaks = function(x) { seq(0, 1, by = 1)}) + 
-      
+
       scale_fill_manual(values = DNA.palette) + theme_bw() + 
       theme(legend.position="none", axis.title.x=element_blank(),
             axis.text.x=element_blank(),
             axis.ticks.x=element_blank(), axis.text.y = element_text(colour="grey20",size=8))
   })
-  
-  
-  
+# code final pour l'affichage des plot  
   output$Tree <- renderPlot({
          grid.arrange(TreeGraph(), AlignGraph(), ncol = 2, nrow = 1, widths = c(6, 1))
   })
